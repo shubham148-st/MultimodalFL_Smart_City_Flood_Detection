@@ -20,7 +20,7 @@ plt.rcParams.update({
 })
 
 # Create directory to save figures
-os.makedirs("journal_figures", exist_ok=True)
+os.makedirs("figures", exist_ok=True)
 
 # ==========================================
 # 1. CORE METRICS MATHEMATICAL FUNCTIONS
@@ -90,7 +90,7 @@ def plot_chart1_ablation():
     
     plt.title('Ablation Analysis: Structural Benefit of Trimodal Heterogeneous Data Fusion', pad=15, fontweight='bold')
     plt.tight_layout()
-    plt.savefig('journal_figures/chart1_ablation_study.png', bbox_inches='tight')
+    plt.savefig('figures/chart1_ablation_study.png', bbox_inches='tight')
     plt.close()
 
 def plot_chart2_robustness():
@@ -110,7 +110,7 @@ def plot_chart2_robustness():
     plt.legend(loc='lower left')
     
     plt.tight_layout()
-    plt.savefig('journal_figures/chart2_robustness_missing_data.png', bbox_inches='tight')
+    plt.savefig('figures/chart2_robustness_missing_data.png', bbox_inches='tight')
     plt.close()
 
 def plot_chart3_convergence():
@@ -136,7 +136,7 @@ def plot_chart3_convergence():
     plt.legend(loc='lower right')
     
     plt.tight_layout()
-    plt.savefig('journal_figures/chart3_heterofl_convergence.png', bbox_inches='tight')
+    plt.savefig('figures/chart3_heterofl_convergence.png', bbox_inches='tight')
     plt.close()
 
 def plot_chart4_tradeoff():
@@ -169,7 +169,7 @@ def plot_chart4_tradeoff():
     
     plt.title('Computation vs. Predictive Accuracy Trade-off via Net Slicing', pad=15, fontweight='bold')
     plt.tight_layout()
-    plt.savefig('journal_figures/chart4_edge_resource_tradeoff.png', bbox_inches='tight')
+    plt.savefig('figures/chart4_edge_resource_tradeoff.png', bbox_inches='tight')
     plt.close()
 
 def plot_chart5_calibration():
@@ -194,7 +194,7 @@ def plot_chart5_calibration():
     plt.legend(loc='upper left')
     
     plt.tight_layout()
-    plt.savefig('journal_figures/chart5_uncertainty_calibration.png', bbox_inches='tight')
+    plt.savefig('figures/chart5_uncertainty_calibration.png', bbox_inches='tight')
     plt.close()
 
 # ==========================================
@@ -227,4 +227,4 @@ if __name__ == "__main__":
     plot_chart4_tradeoff()
     plot_chart5_calibration()
     
-    print("\nSuccess! All 5 Q1-standard figures saved securely in the 'journal_figures/' folder.")
+    print("\nSuccess! All 5 Q1-standard figures saved securely in the 'figures/' folder.")
