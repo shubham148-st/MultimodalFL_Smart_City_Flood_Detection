@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌊 Multimodal Federated Learning for Smart City Flood Detection
+#  Multimodal Federated Learning for Smart City Flood Detection
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
@@ -26,9 +26,9 @@ By simultaneously ingesting **Satellite Imagery**, **River Gauge (Water Level) D
 
 *   **Heterogeneous Federated Learning (HeteroFL):** Not all edge devices are created equal. Our architecture dynamically slices the global model into smaller sub-networks (e.g., `Rate 0.5` for low-power edge nodes, `Rate 1.0` for HQ servers), allowing computationally constrained IoT devices to participate in the federated training process.
 *   **Deep Trimodal Fusion:** 
-    *   **Image Branch:** A pre-trained ResNet-18 backbone (with unfrozen high-level layers) and CBAM-style Spatial Attention for satellite imagery.
-    *   **Rainfall Branch:** An all-MLP `TSMixer` optimized for multivariate time-series forecasting.
-    *   **Water-Level Branch:** A `NARX` (Nonlinear AutoRegressive Network with eXogenous inputs) architecture for hydrological sequence modeling.
+    *   **Image Branch:** A pre-trained [ResNet-18](https://arxiv.org/abs/1512.03385) backbone (with unfrozen high-level layers) and CBAM-style Spatial Attention for satellite imagery.
+    *   **Rainfall Branch:** An all-MLP [TSMixer](https://arxiv.org/abs/2303.06053) optimized for multivariate time-series forecasting.
+    *   **Water-Level Branch:** A [NARX](https://en.wikipedia.org/wiki/Nonlinear_autoregressive_exogenous_model) (Nonlinear AutoRegressive Network with eXogenous inputs) architecture for hydrological sequence modeling.
 *   **Modality Dropout & Sensor Resilience:** We implement aggressive Modality Dropout (dropping sensor data 50% of the time during training) to prevent "sensor dominance," ensuring the model learns strong representations from the visual data branch as well.
 *   **Recall-Optimized Focal Loss:** In disaster management, a false negative (missed flood) is far more dangerous than a false positive. We utilize a Focal Loss function with optimized decision thresholds to heavily penalize missed detections.
 *   **Monte Carlo Uncertainty Quantification:** Deep stochastic layers allow the network to output not just a binary classification, but a calibrated *predictive uncertainty variance*, providing critical trust metrics for emergency responders.
