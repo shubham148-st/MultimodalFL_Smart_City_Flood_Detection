@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyTorch Model Checkpoints
+*.pth
+*.pt
+*.ckpt
+
+# Datasets and Large Data Files
+dataset/flood_dataset_npy/
+*.npy
+*.csv
+# If you want to keep the CSV files in git (they are usually small), you can comment out *.csv
+
+# C Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+
+# Output figures / logs (Optional: comment these out if you want to push the charts to GitHub)
+# journal_figures/
+# results/
+# csv_results/
