@@ -1,3 +1,11 @@
+"""
+Monte Carlo Dropout for predictive uncertainty quantification.
+
+This module evaluates model confidence by enabling dropout layers during 
+inference, performing multiple stochastic forward passes, and measuring the 
+variance of the predictions to differentiate between aleatoric and epistemic uncertainty.
+"""
+
 import numpy as np
 import torch
 import multiprocessing
@@ -6,7 +14,15 @@ from .config import DEVICE, MC_ITERATIONS
 
 
 def _plot_histogram(predictions, mean_pred, iterations, all_variances):
-    """Generate uncertainty histogram in isolated process."""
+    """
+    Generate an uncertainty histogram in an isolated process.
+
+    Args:
+        predictions (list of float): MC dropout predictions for a single sample.
+        mean_pred (float): The mean predicted probability.
+        iterations (int): Number of MC stochastic passes performed.
+        all_variances (list of float): Variances across all evaluated samples.
+    """
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -17,7 +33,7 @@ def _plot_histogram(predictions, mean_pred, iterations, all_variances):
     axes[0].hist(predictions, bins=25, color='steelblue', alpha=0.8, edgecolor='black')
     axes[0].axvline(mean_pred, color='red', linestyle='dashed', linewidth=2,
                     label=f'Mean Prob: {mean_pred:.3f}')
-    axes[0].set_title(f'MC Dropout Predictions — Sample #0 ({iterations} Passes)')
+    axes[0].set_title(f'MC Dropout Predictions - Sample #0 ({iterations} Passes)')
     axes[0].set_xlabel('Predicted Flood Probability')
     axes[0].set_ylabel('Frequency')
     axes[0].legend()
@@ -37,26 +53,25 @@ def _plot_histogram(predictions, mean_pred, iterations, all_variances):
 
 
 def monte_carlo_uncertainty(model, dataloader, iterations=None, num_samples=5):
-    """Run MC Dropout uncertainty quantification on multiple samples.
+    """
+    Run MC Dropout uncertainty quantification on multiple test samples.
 
-    Uses a FULL batch (not duplicated samples) so that BatchNorm1d with
-    track_running_stats=False computes meaningful batch statistics.
+    Uses a full batch to ensure BatchNorm statistics remain valid, while enabling
+    dropout layers during evaluation to sample from the approximate posterior.
 
-    Parameters
-    ----------
-    model      : trained TriModalFloodNet
-    dataloader : DataLoader with real data
-    iterations : number of stochastic forward passes
-    num_samples: how many samples to evaluate (from the first batch)
+    Args:
+        model (nn.Module): Trained TriModalFloodNet model.
+        dataloader (DataLoader): DataLoader containing test or validation data.
+        iterations (int, optional): Number of stochastic forward passes. Defaults to config value.
+        num_samples (int, optional): Number of samples to log in detail. Defaults to 5.
 
-    Returns
-    -------
-    results : list of dict with keys 'true_label', 'mean_pred', 'variance', 'correct'
+    Returns:
+        list of dict: Dictionary containing ground truth, mean prediction, variance, and correctness.
     """
     if iterations is None:
         iterations = MC_ITERATIONS
 
-    print("\n--- Monte Carlo Dropout Uncertainty Quantification ---")
+    print("\n[ Monte Carlo Dropout Uncertainty Quantification ]")
 
     # Enable ALL dropout layers; keep BatchNorm in eval mode.
     # The deeper stochastic fusion head (mc_dropout1 + mc_dropout2) now
@@ -87,7 +102,7 @@ def monte_carlo_uncertainty(model, dataloader, iterations=None, num_samples=5):
 
     results = []
     print(f"\n{'Sample':<8} {'True':>6} {'Mean%':>8} {'Var':>10} {'Verdict':>10}")
-    print("-" * 48)
+    print("=" * 48)
 
     for s in range(num_samples):
         preds     = all_predictions[s]
@@ -108,7 +123,7 @@ def monte_carlo_uncertainty(model, dataloader, iterations=None, num_samples=5):
         status = '[OK]' if correct else '[FAIL]'
         print(f"  #{s:<4}  {actual:>6}  {mean_pred*100:>7.2f}%  {variance:>9.5f}  {status:>10}")
 
-    # Aggregate uncertainty statistics (journal table row)
+    # Aggregate uncertainty statistics
     all_variances = [r['variance'] for r in results]
     print(f"\n  Uncertainty Summary:")
     print(f"    Mean Variance : {np.mean(all_variances):.6f}")

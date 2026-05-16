@@ -1,3 +1,13 @@
+"""
+Federated training and evaluation protocols.
+
+This module provides the core local training loops for heterogeneous clients,
+dynamically routing data based on the client's available modalities (img_only,
+sensor_only, full). It handles class-imbalanced learning via Focal Loss and 
+provides robust global evaluation metrics including ROC-AUC, PR-AUC, and 
+automated decision threshold optimization.
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -11,7 +21,19 @@ from .config import DEVICE, LOCAL_EPOCHS, LR
 
 
 def _forward(model, imgs, rain, water, dtype):
-    """Route inputs through the model depending on the client data type."""
+    """
+    Route inputs through the model depending on the client's data modality type.
+
+    Args:
+        model (nn.Module): The local or global TriModalFloodNet model.
+        imgs (torch.Tensor): Satellite imagery batch.
+        rain (torch.Tensor): Rainfall time-series batch.
+        water (torch.Tensor): Water-level sensor batch.
+        dtype (str): Modality type ('img_only', 'sensor_only', 'full').
+
+    Returns:
+        torch.Tensor: Model output logits.
+    """
     if dtype == 'img_only':
         return model(imgs, None, None)
     elif dtype == 'sensor_only':
@@ -21,7 +43,19 @@ def _forward(model, imgs, rain, water, dtype):
 
 
 def _compute_pos_weight(loader, device):
-    """Estimate BCE pos_weight from the dataset to handle class imbalance."""
+    """
+    Estimate BCE pos_weight from the dataset to handle class imbalance.
+
+    Calculates the ratio of negative to positive samples in the training loader
+    to appropriately scale the loss for the underrepresented positive class.
+
+    Args:
+        loader (DataLoader): Training data loader.
+        device (str or torch.device): Compute device.
+
+    Returns:
+        torch.Tensor: Computed positive weight scalar.
+    """
     total, pos = 0, 0
     for _, _, _, labels in loader:
         pos   += labels.sum().item()
@@ -33,12 +67,20 @@ def _compute_pos_weight(loader, device):
 
 
 def _find_optimal_threshold(all_logits, all_labels, num_steps=50):
-    """Grid-search the decision threshold that maximises F1 (recall-biased).
+    """
+    Grid-search the decision threshold that maximizes F1-Score (recall-biased).
 
-    For flood warning systems, missing a flood (false negative) is far
-    worse than a false alarm.  We search thresholds from 0.1 to 0.9 and
-    pick the one with best F1, which inherently raises recall when the
-    optimum lies below the default 0.5.
+    For disaster warning systems, missing an event (false negative) is typically
+    more critical than a false alarm. This function searches threshold values
+    between 0.1 and 0.9 to find the empirical optimum.
+
+    Args:
+        all_logits (torch.Tensor): Raw output logits from the model.
+        all_labels (torch.Tensor): Ground truth labels.
+        num_steps (int, optional): Number of thresholds to evaluate. Defaults to 50.
+
+    Returns:
+        float: The optimal probability threshold.
     """
     probs = torch.sigmoid(all_logits)
     best_f1 = -1.0
@@ -58,13 +100,23 @@ def _find_optimal_threshold(all_logits, all_labels, num_steps=50):
 
 
 def train_one_round(global_model, clients, train_loader):
-    """Run one federated round: local training + evaluation for every client.
+    """
+    Run one federated round: local training and evaluation for every active client.
 
-    Returns
-    -------
-    local_updates : list[state_dict]
-    active_rates  : list[float]
-    client_round_metrics : dict  {cid: {'loss': float, 'acc': float}}
+    Each client downloads a rate-sliced version of the global model, trains it
+    on their specific modality combination for a set number of epochs, and 
+    returns the updated parameters.
+
+    Args:
+        global_model (nn.Module): The current global model architecture.
+        clients (list of dict): List of client configurations.
+        train_loader (DataLoader): The federated training dataset.
+
+    Returns:
+        tuple: (local_updates, active_rates, client_round_metrics)
+            - local_updates (list of dict): State dicts of locally trained models.
+            - active_rates (list of float): The HeteroFL slicing rates used.
+            - client_round_metrics (dict): Mapping of client ID to local loss and accuracy.
     """
     # Focal Loss to handle flood/no-flood imbalance and boost recall.
     # α=0.75 up-weights flood class; γ=2.0 focuses on hard examples.
@@ -91,7 +143,7 @@ def train_one_round(global_model, clients, train_loader):
         optimizer = optim.AdamW(local_model.parameters(), lr=lr, weight_decay=1e-4)
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
-        # --- Local Training ---
+        # Local Training
         import torchvision.transforms as T
         aug = T.Compose([
             T.RandomHorizontalFlip(p=0.5),
@@ -129,7 +181,7 @@ def train_one_round(global_model, clients, train_loader):
 
         avg_loss = epoch_loss / steps if steps > 0 else 0
 
-        # --- Local Evaluation ---
+        # Local Evaluation
         local_model.eval()
         correct = 0
         total   = 0
@@ -162,10 +214,21 @@ def train_one_round(global_model, clients, train_loader):
 
 
 def evaluate_global(global_model, data_loader, dtype='full'):
-    """Evaluate the global model with optimised decision threshold.
+    """
+    Evaluate the global model with an optimized decision threshold.
 
-    Computes standard metrics plus ROC-AUC, PR-AUC, and Confusion Matrix.
-    Uses _forward to allow ablation studies on specific modalities.
+    Computes standard classification metrics plus ROC-AUC, PR-AUC, and 
+    provides a Confusion Matrix. Leverages `_forward` to enable seamless
+    ablation studies on specific data modalities.
+
+    Args:
+        global_model (nn.Module): The aggregated global model to evaluate.
+        data_loader (DataLoader): The evaluation dataset (Val or Test).
+        dtype (str, optional): The modality configuration to test. Defaults to 'full'.
+
+    Returns:
+        dict: A dictionary containing 'acc', 'prec', 'rec', 'f1', 'threshold', 
+              'roc_auc', 'pr_auc', and 'cm' (Confusion Matrix).
     """
     global_model.eval()
     all_logits = []

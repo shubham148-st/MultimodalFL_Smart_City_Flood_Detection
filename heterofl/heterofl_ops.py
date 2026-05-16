@@ -1,9 +1,31 @@
+"""
+Heterogeneous Federated Learning (HeteroFL) Operations.
+
+This module provides the core functions for model slicing and aggregation,
+enabling clients with varying computational capacities to train sub-networks
+extracted from a larger global model.
+"""
+
 import copy
 import torch
 
 
 def split_model(global_model, rate):
-    """Slice global model weights down to the sub-model defined by `rate`."""
+    """
+    Slice global model weights down to a sub-network defined by the given rate.
+
+    Extracts a contiguous subset of channels/dimensions from the global parameters
+    to fit the computational constraints of a specific client tier. Handles 
+    special exemptions for frozen pre-trained backbones and specific modality 
+    projection constraints.
+
+    Args:
+        global_model (nn.Module): The full-capacity global PyTorch model.
+        rate (float): The slicing rate (e.g., 0.5 for half-width, 1.0 for full).
+
+    Returns:
+        dict: A state dictionary containing the sliced model parameters.
+    """
     if rate == 1.0:
         return copy.deepcopy(global_model.state_dict())
 
@@ -109,7 +131,21 @@ def split_model(global_model, rate):
 
 
 def aggregate_models(global_model, local_updates, client_rates):
-    """Federated averaging: merge local updates back into the global model."""
+    """
+    Perform federated aggregation of sub-network updates into the global model.
+
+    Since clients train sub-networks of varying sizes, this function tracks
+    the frequency of updates per parameter index and performs an element-wise 
+    average only across the clients that actually trained that specific parameter.
+
+    Args:
+        global_model (nn.Module): The current global model to be updated.
+        local_updates (list of dict): List of local state_dicts from clients.
+        client_rates (list of float): The corresponding model slice rates for each client.
+
+    Returns:
+        nn.Module: The updated global model.
+    """
     global_state = global_model.state_dict()
     weight_sum = {k: torch.zeros_like(v, dtype=torch.float) for k, v in global_state.items()}
     count = {k: torch.zeros_like(v, dtype=torch.float) for k, v in global_state.items()}

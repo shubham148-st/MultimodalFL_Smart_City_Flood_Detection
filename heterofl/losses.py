@@ -1,16 +1,11 @@
 """
 Focal Loss for binary classification with class imbalance.
 
-In flood detection, the standard BCEWithLogitsLoss tends to saturate on
-easy-to-classify 'no flood' samples, which dominate the dataset.
+In anomaly detection tasks like flood detection, standard BCEWithLogitsLoss tends 
+to saturate on easy-to-classify 'no flood' samples, which dominate the dataset.
 Focal Loss (Lin et al., ICCV 2017) down-weights well-classified examples
-and concentrates learning signal on hard positives — floods that the model
-currently misses — directly boosting recall.
-
-Journal reference:
-    'We adopt Focal Loss with γ=2.0 and class-aware α to mitigate the
-    high false-negative rate inherent in imbalanced flood datasets,
-    achieving X% recall improvement over standard BCE.'
+and concentrates the learning signal on hard positives—floods that the model
+currently misses—directly boosting recall.
 """
 
 import torch
@@ -19,21 +14,18 @@ import torch.nn.functional as F
 
 
 class FocalLossWithLogits(nn.Module):
-    """Binary Focal Loss operating on raw logits (numerically stable).
+    """
+    Binary Focal Loss operating on raw logits (numerically stable).
 
-    Parameters
-    ----------
-    alpha : float
-        Weighting factor for the positive class.  α > 0.5 biases toward
-        recall (fewer missed floods).  Estimated from data if not provided.
-    gamma : float
-        Focusing parameter.  γ = 0 ≡ standard BCE.  γ = 2 is the
-        standard recommendation from Lin et al.
-    pos_weight : torch.Tensor or None
-        If provided, used as the BCE pos_weight (class-frequency ratio).
-        When `alpha` is also set, both effects combine: alpha re-scales
-        the focal modulation while pos_weight handles class imbalance
-        inside the base BCE term.
+    Args:
+        alpha (float, optional): Weighting factor for the positive class. α > 0.5 
+            biases toward recall (fewer missed positive instances). Defaults to 0.75.
+        gamma (float, optional): Focusing parameter. γ = 0 is equivalent to standard 
+            BCE. γ = 2 is the standard recommendation. Defaults to 2.0.
+        pos_weight (torch.Tensor, optional): Used as the BCE pos_weight (class-frequency 
+            ratio). When `alpha` is also set, both effects combine: alpha re-scales
+            the focal modulation while pos_weight handles class imbalance inside the 
+            base BCE term. Defaults to None.
     """
 
     def __init__(self, alpha: float = 0.75, gamma: float = 2.0,

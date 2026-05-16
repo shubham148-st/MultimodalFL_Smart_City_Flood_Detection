@@ -1,10 +1,22 @@
+"""
+Convolutional Neural Network components for satellite imagery feature extraction.
+
+Contains foundational building blocks like DoubleConv blocks and the SpatialAttention
+module used to refine spatial feature maps.
+"""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
 class DoubleConv(nn.Module):
-    """Two consecutive Conv2d → BN → ReLU layers (standard UNet building block)."""
+    """
+    Two consecutive Conv2d -> BatchNorm2d -> ReLU layers.
+    
+    A standard building block frequently used in UNet architectures and 
+    custom CNN encoders.
+    """
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.double_conv = nn.Sequential(
@@ -21,7 +33,14 @@ class DoubleConv(nn.Module):
 
 
 class SpatialAttention(nn.Module):
-   
+    """
+    Spatial Attention module (CBAM-style).
+
+    Aggregates spatial information by computing average and max pooling along 
+    the channel dimension, then applies a convolutional layer to generate a 
+    spatial attention map. This map highlights informative regions in the 
+    feature maps (e.g., distinguishing water bodies from terrain).
+    """
     def __init__(self, kernel_size: int = 7):
         super().__init__()
         self.conv = nn.Conv2d(2, 1, kernel_size=kernel_size,
@@ -37,7 +56,12 @@ class SpatialAttention(nn.Module):
 
 
 class FloodUNet(nn.Module):
-    """Legacy UNet (kept for backward compatibility, not used in TriModalFloodNet)."""
+    """
+    Legacy UNet segmentation model.
+
+    Retained for backward compatibility with earlier purely spatial segmentation
+    baselines. Not actively used in the current TriModalFloodNet architecture.
+    """
     def __init__(self, n_channels=5, n_classes=1):
         super().__init__()
         self.inc   = DoubleConv(n_channels, 16)

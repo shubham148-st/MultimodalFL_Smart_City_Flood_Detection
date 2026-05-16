@@ -1,3 +1,12 @@
+"""
+Data loading and preprocessing module for the Multimodal Flood Detection system.
+
+This module is responsible for loading heterogeneous data sources (satellite imagery patches,
+rainfall time-series, and water-level sensor data), aligning them by timestamp, and 
+structuring them into a unified PyTorch TensorDataset. It handles missing modalities
+and generates a proper Train/Validation/Test split.
+"""
+
 import os
 import glob
 import numpy as np
@@ -7,10 +16,19 @@ from torch.utils.data import TensorDataset
 
 
 def get_dataset():
-    """Load and align satellite image, rainfall, and water-level data."""
+    """
+    Load, preprocess, and align multimodal dataset.
+
+    Returns:
+        tuple: (train_ds, val_ds, test_ds)
+            train_ds (torch.utils.data.Subset): Training dataset split (70%).
+            val_ds (torch.utils.data.Subset): Validation dataset split (15%).
+            test_ds (torch.utils.data.Subset): Test dataset split (15%).
+            Returns None if required CSV files are not found.
+    """
     print("dataset loading")
 
-    # --- Rainfall CSV ---
+    # Rainfall CSV
     try:
         df_rain = pd.read_csv("dataset/tsmixer_input.csv")
         rain_cols = [f't{i}' for i in range(10)]
@@ -20,7 +38,7 @@ def get_dataset():
         print(" Error: tsmixer_input.csv not found.")
         return None
 
-    # --- Flood / Water-Level CSV ---
+    # Flood / Water-Level CSV
     try:
         df_water = pd.read_csv("dataset/flood_dataset.csv")
         water_cols = [f'h{i}' for i in range(10)]
@@ -33,7 +51,7 @@ def get_dataset():
         print(" Error: flood_dataset.csv not found.")
         return None
 
-    # --- Satellite .npy patches ---
+    # Satellite .npy patches
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     npy_folder = os.path.join(base_dir, "dataset", "flood_dataset_npy")
     npy_path = os.path.join(npy_folder, "*.npy")
@@ -75,7 +93,7 @@ def get_dataset():
         if len(X_np.shape) == 3:
             X_np = X_np[:, np.newaxis, :, :]  # [N, 1, 64, 64]
 
-        # ── Per-patch z-score normalization ──────────────────────────────
+        # Per-patch z-score normalization
         # Satellite patches have wildly different dynamic ranges.
         # Normalizing each patch independently prevents the CNN from
         # learning to respond to absolute brightness instead of structure.
@@ -88,17 +106,28 @@ def get_dataset():
         print("[WARNING] 0 patches found. Pipeline will use noise.")
         X_img_raw = torch.empty(0)
 
-    # --- Align lengths ---
+    # Align lengths
     len_rain  = len(X_rain_raw)
     len_water = len(X_water_raw)
     len_img   = len(X_img_raw) if len(X_img_raw) > 0 else 0
     max_len   = max(len_rain, len_water, len_img)
 
-    # Print class balance (important for journal: shows dataset is not trivially skewed)
+    # Print class balance
     flood_frac = Y_raw.mean().item() * 100
-    print(f"[DEBUG] Class balance — Flood: {flood_frac:.1f}% | No-Flood: {100-flood_frac:.1f}%")
+    print(f"[DEBUG] Class balance - Flood: {flood_frac:.1f}% | No-Flood: {100-flood_frac:.1f}%")
 
     def pad_tensor(t, target_len, dim_shape):
+        """
+        Pad or truncate a tensor to match a target temporal length.
+        
+        Args:
+            t (torch.Tensor): Input tensor to pad or truncate.
+            target_len (int): The desired length of the tensor.
+            dim_shape (tuple): The shape of the individual elements (excluding batch/sequence dim).
+            
+        Returns:
+            torch.Tensor: The length-aligned tensor.
+        """
         current_len = len(t)
         if current_len >= target_len:
             return t[:target_len]
@@ -119,7 +148,7 @@ def get_dataset():
 
     dataset = TensorDataset(X_img, X_rain, X_water, Y)
 
-    # --- 70/15/15 Train/Val/Test Split ---
+    # 70/15/15 Train/Val/Test Split
     total_len = len(dataset)
     train_len = int(0.7 * total_len)
     val_len   = int(0.15 * total_len)
@@ -130,6 +159,6 @@ def get_dataset():
         dataset, [train_len, val_len, test_len], generator=generator
     )
 
-    print(f" Dataset Split — Train: {len(train_ds)} | Val: {len(val_ds)} | Test: {len(test_ds)}")
+    print(f" Dataset Split - Train: {len(train_ds)} | Val: {len(val_ds)} | Test: {len(test_ds)}")
     return train_ds, val_ds, test_ds
 
